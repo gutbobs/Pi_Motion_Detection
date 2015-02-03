@@ -340,6 +340,5 @@ with picamera.PiCamera() as camera:
                  logger.info("Captured snapshot")
 
    finally:
-       camera.stop_recording(splitter_port=0)
        camera.stop_recording(splitter_port=1)
        camera.stop_recording(splitter_port=2)
