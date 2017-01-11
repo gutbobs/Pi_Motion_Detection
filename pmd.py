@@ -22,6 +22,7 @@ import numpy as np
 import datetime as dt
 import time
 import json
+import sys
 from PIL import Image
 
 
@@ -34,6 +35,16 @@ class MyMotionDetector(picamera.array.PiMotionAnalysis):
       global histo1, histo2, debug_dump_extra_motion_histo, histo_extra_debug
       global camera, motion_event, motion_timestamp, motion_array, motion_array_mask
       global prev_frame_annotation, curr_frame_annotation, motion_window_active, motion_frame_active
+
+      if not os.path.exists(variables_filename):
+        print "global variables file not defined. Exiting"
+        quit()
+      with open(variables_filename) as data_file: 
+        global_variables = json.load(data_file)
+
+      motion_threshold = global_variables["motion_threshold"] 
+      motion_sensitivity = global_variables["motion_sensitivity"] 
+
       # calculate length of motion vectors of mpeg macro blocks
       a = np.sqrt(
           np.square(a['x'].astype(np.float)) +
@@ -145,12 +156,15 @@ def main(variables_filename):
   pmd_version = global_variables["pmd_version"] #current version number to print in the logger
 
   #logging_level = logging.INFO
-  logging_level  = global_variables["logging_level"]
+  if global_variables["logging_level"] == "logging.DEBUG": logging_level  = logging.DEBUG
+  else: logging_level = logging.INFO
 
   # extra debugging - dump histo on all frames where some threshold motion is detected (CPU INTENSIVE !)
+  global debug_dump_extra_motion_histo
   debug_dump_extra_motion_histo = global_variables["extra_debugging"]
 
   #dump_png mode? dumps extra dump_png info.  Note: it doesn't work.
+  global dump_png
   dump_png = False
 
   # define a timeout for the "event" waiting for motion to be detected,
@@ -163,6 +177,7 @@ def main(variables_filename):
     os.makedirs(filepath)
 
   # setup pre and post video recording around motion events
+  global video_preseconds,video_postseconds
   video_preseconds = global_variables["video_preseconds"]  # minimum 1
   video_postseconds = global_variables["video_postseconds"]  # minimum 1
 
@@ -223,14 +238,17 @@ def main(variables_filename):
   # define an event used to set/clear/check whether motion was detected or not-detected
   # with any luck, this means that we won't use 100% cpu looping around
   # inside a WHILE TRUE loop just constantly checking for a true/false condition
+  global motion_event
   motion_event = threading.Event()
   motion_event.clear()
 
   # initialize timestamp stuff
   motion_timestamp = time.time()
+  global motion_window_active
   motion_window_active = "-"
   motion_frame_active = "-"
 
+  global prev_frame_annotation
   prev_frame_annotation = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " --"
   curr_frame_annotation = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " --"
 
@@ -242,6 +260,7 @@ def main(variables_filename):
       motion_array = np.zeros((motion_rows, motion_cols), dtype = np.uint8)
 
   # pre-initialise arrays for histograms (print these in the log)
+  global histo_bins
   histo_bins = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50, 100]
   histo0 =     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 00, 00, 00, 00, 00, 00, 000]
   histo1 =     histo0
@@ -249,7 +268,7 @@ def main(variables_filename):
   histo_nil =  histo0
   histo_extra_debug = histo0
 
-
+  global logger
   logger = logging.getLogger('pmd')
   logger.setLevel(logging_level)
   fh = logging.handlers.RotatingFileHandler(logger_filename, mode='a', maxBytes=(1024*1000 * 2), backupCount=5, delay=0)
@@ -279,6 +298,8 @@ def main(variables_filename):
   logger.info("Histo_frame motion threshold bins: " + str(histo_bins))
   logger.info("Logging Level: %d (info=%d, debug=%d)" % (logging_level, logging.INFO, logging.DEBUG))
   logger.info("Dump extra motion histo info: %r" % (debug_dump_extra_motion_histo))
+
+  global camera
 
   with picamera.PiCamera() as camera:
      camera.resolution = (video_width, video_height)
@@ -314,6 +335,7 @@ def main(variables_filename):
                logger.info('Detected motion')
                logger.info("Histo frame 1: " + str(histo1_tmp))
                logger.info("Histo frame 2: " + str(histo2_tmp))
+               global motion_filename
                motion_filename = filepath + "/" + time.strftime("%Y%m%d-%H%M%S", time.localtime(motion_timestamp))
                # split  the high res video stream to a file instead of to the internal circular buffer
                logger.debug('splitting video from circular IO buffer to after-motion-detected h264 file ')
@@ -357,4 +379,4 @@ def main(variables_filename):
 
 if __name__ == "__main__":
   variables_filename = sys.argv[1]
-  main(variables_filesname)
+  main(variables_filename)
