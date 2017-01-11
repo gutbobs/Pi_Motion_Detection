@@ -113,8 +113,6 @@ class MyMotionDetector(picamera.array.PiMotionAnalysis):
 # lock the stream here as we're definitely not writing to it
 # simultaneously
 def write_video(stream):
-     global motion_filename
-
      with io.open(motion_filename + '-before.h264', 'wb') as output:
          for frame in stream.frames:
              if frame.frame_type == picamera.PiVideoFrameType.sps_header:
@@ -243,6 +241,7 @@ def main(variables_filename):
   motion_event.clear()
 
   # initialize timestamp stuff
+  global motion_timestamp
   motion_timestamp = time.time()
   global motion_window_active
   motion_window_active = "-"
@@ -260,7 +259,7 @@ def main(variables_filename):
       motion_array = np.zeros((motion_rows, motion_cols), dtype = np.uint8)
 
   # pre-initialise arrays for histograms (print these in the log)
-  global histo_bins
+  global histo_bins,histo0
   histo_bins = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 30, 40, 50, 100]
   histo0 =     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 00, 00, 00, 00, 00, 00, 000]
   histo1 =     histo0
@@ -337,6 +336,7 @@ def main(variables_filename):
                logger.info("Histo frame 2: " + str(histo2_tmp))
                global motion_filename
                motion_filename = filepath + "/" + time.strftime("%Y%m%d-%H%M%S", time.localtime(motion_timestamp))
+               logger.info("filename created:" + motion_filename)
                # split  the high res video stream to a file instead of to the internal circular buffer
                logger.debug('splitting video from circular IO buffer to after-motion-detected h264 file ')
                camera.split_recording(motion_filename + '-after.h264', splitter_port=1)
