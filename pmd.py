@@ -25,6 +25,8 @@ import json
 import sys
 from PIL import Image
 
+from modules import checkstorage
+
 
 #call back handler for motion output data from h264 hw encoder
 #this processes the motion vectors from the low resolution splitted capture
@@ -374,8 +376,17 @@ def main(variables_filename):
                    logger.info("Captured snapshot")
 
      finally:
-         camera.stop_recording(splitter_port=1)
-         camera.stop_recording(splitter_port=2)
+        camera.stop_recording(splitter_port=1)
+        camera.stop_recording(splitter_port=2)
+
+        global_variables['total_used_storage'] = checkstorage.GetTotalSize(global_variables)
+        max_permitted_size = global_variables["max_folder_size_in_gb"] * 1024 * 1024 * 1024
+        global_variables['bytes_to_clean'] = global_variables['total_used_storage'] - max_permitted_size 
+
+        if global_variables['bytes_to_clean']  >= 0:
+          logger.info( "Old files need to be deleted")
+          checkstorage.RemoveOldFiles(global_variables)
+
 
 if __name__ == "__main__":
   variables_filename = sys.argv[1]
