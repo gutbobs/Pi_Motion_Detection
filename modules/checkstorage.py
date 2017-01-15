@@ -20,7 +20,7 @@ def GetTotalSize(variables):
 def RemoveOldFiles(variables):
 	folder_to_check = variables['file_path']
 	total_size = 0
-	bytes_to_clean = global_variables['bytes_to_clean'] 
+	bytes_to_clean = variables['bytes_to_clean'] 
 	files = glob.glob(os.path.join(folder_to_check,'*'))
 	files.sort(key = os.path.getmtime)
 
