@@ -1,5 +1,6 @@
 import os
 import glob
+import sys
 
 ''' this module checks the storage folder specified in the variables file 
 and makes sure it's contents do not exceed the size limit specified in it. 
@@ -36,8 +37,8 @@ def RemoveOldFiles(variables):
 		os.remove(f)
 
 if __name__ == "__main__":
-	global_variables={"file_path":"/var/www/html/pmd",
-				"max_folder_size_in_gb" : 3
+	global_variables={"file_path":sys.argv[1],
+				"max_folder_size_in_gb" : 5
 				}
 	global_variables['total_used_storage'] = GetTotalSize(global_variables)
 	print global_variables
